@@ -1,0 +1,33 @@
+name: Fetch EPG
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours
+  workflow_dispatch: # allows manual run
+
+jobs:
+  fetch:
+    runs-on: windows-latest
+
+    steps:
+      # 1️⃣ Checkout the repository
+      - uses: actions/checkout@v3
+
+      # 2️⃣ Setup Node.js
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # 3️⃣ Install dependencies
+      - run: npm install axios iconv-lite epg-parser pako dayjs xmlbuilder
+
+      # 4️⃣ Run the EPG fetcher
+      - run: node fetch_epg.js
+
+      # 5️⃣ Commit and push generated XML files
+      - run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "github-actions@github.com"
+          git add *.xml
+          git commit -m "Update XMLTV [skip ci]" || echo "No changes"
+          git push
