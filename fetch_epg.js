@@ -1,9 +1,9 @@
-const fs = require('fs-extra');
+const fs = require('fs');
 const axios = require('axios');
 const zlib = require('zlib');
-const xml2js = require('xml2js');
+const sax = require('sax');
 
-// Whitelisted channels
+// Your whitelisted channels
 const channels = [
   "Comet(COMET).us",
   "Laff(LAFF).us",
@@ -157,30 +157,50 @@ const channels = [
   "MGM+Hits(MGMHIT).us",
   "SonyMovieChannel(SONY).us",
   "TheMovieChannel(TMC).us"
-
-  // add the rest of your whitelisted channels here
+  // add all other channels here...
 ];
 
 async function fetchEPG() {
   try {
     console.log('Fetching 7-day EPG...');
 
-    const url = 'https://epg.jesmann.com/iptv/	UnitedStates-og.xml.gz';
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
-    const xmlBuffer = zlib.gunzipSync(response.data);
-    const xmlString = xmlBuffer.toString('utf-8');
+    const url = 'https://epg.jesmann.com/iptv/UnitedStates-7day.xml.gz';
 
-    const parsed = await xml2js.parseStringPromise(xmlString);
+    const response = await axios({
+      method: 'get',
+      url,
+      responseType: 'stream'
+    });
 
-    // Filter channels
-    parsed.tv.channel = parsed.tv.channel.filter(ch => channels.includes(ch.$.id));
-    parsed.tv.programme = parsed.tv.programme.filter(pr => channels.includes(pr.$.channel));
+    const gunzip = zlib.createGunzip();
+    const parser = sax.createStream(true, { trim: true });
 
-    const builder = new xml2js.Builder();
-    const finalXml = builder.buildObject(parsed);
+    let writeStream = fs.createWriteStream('epg_7day.xml');
+    writeStream.write('<tv>\n');
 
-    fs.writeFileSync('epg_7day.xml', finalXml, 'utf-8');
-    console.log('7-day EPG saved as epg_7day.xml');
+    parser.on('opentag', node => {
+      if (node.name === 'channel' && channels.includes(node.attributes.id)) {
+        writeStream.write(`<channel id="${node.attributes.id}">\n`);
+      }
+      if (node.name === 'programme' && channels.includes(node.attributes.channel)) {
+        writeStream.write(`<programme channel="${node.attributes.channel}" start="${node.attributes.start}" stop="${node.attributes.stop}">\n`);
+      }
+    });
+
+    parser.on('closetag', name => {
+      if (name === 'channel' || name === 'programme') {
+        writeStream.write(`</${name}>\n`);
+      }
+    });
+
+    parser.on('end', () => {
+      writeStream.write('</tv>\n');
+      writeStream.close();
+      console.log('7-day EPG saved as epg_7day.xml');
+    });
+
+    response.data.pipe(gunzip).pipe(parser);
+
   } catch (err) {
     console.error('Error fetching 7-day EPG:', err.message);
     process.exit(1);
