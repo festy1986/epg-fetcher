@@ -5,6 +5,7 @@ const xml2js = require('xml2js');
 
 // Whitelisted channels (same as 7-day)
 const channels = [
+const channelsFullEPG = [
   "4UV.us",
   "48Hours(48HOURS).us",
   "60Minutes(60MINS).us",
@@ -280,6 +281,8 @@ const channels = [
   "WickedTuna(DISTW).us",
   "Wipeout(DISWO).us",
   "WipeoutXtra(WIPEOUT).us"
+];
+
   // add the rest of your whitelisted channels here
 ];
 
