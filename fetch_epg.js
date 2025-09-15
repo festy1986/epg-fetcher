@@ -5,6 +5,7 @@ const xml2js = require('xml2js');
 
 // Whitelisted channels
 const channels = [
+const channels7Day = [
   "Comet(COMET).us",
   "Laff(LAFF).us",
   "ABC(WMTW).us",
@@ -13,7 +14,6 @@ const channels = [
   "NBC(WBTSCD).us",
   "NBC(WCSH).us",
   "ABC(WCVB).us",
-  "ABC(WMTW).us",
   "NewEnglandCableNews(NECN).us",
   "PBS(HD01).us",
   "CW(WLVI).us",
@@ -21,7 +21,7 @@ const channels = [
   "WSBK.us",
   "CBS(WGME).us",
   "ION.us",
-  "MeTVNetwork(METVN).us"
+  "MeTVNetwork(METVN).us",
   "INSPHD(INSPHD).us",
   "GameShowNetwork(GSN).us",
   "FamilyEntertainmentTelevision(FETV).us",
@@ -157,8 +157,8 @@ const channels = [
   "MGM+Hits(MGMHIT).us",
   "SonyMovieChannel(SONY).us",
   "TheMovieChannel(TMC).us"
+];
 
-  "MeTVNetwork(METVN).us"
   // add the rest of your whitelisted channels here
 ];
 
