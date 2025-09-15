@@ -165,7 +165,7 @@ async function fetchEPG() {
   try {
     console.log('Fetching 7-day EPG...');
 
-    const url = 'https://epg.jesmann.com/iptv/UnitedStates-7day.xml.gz';
+    const url = 'https://epg.jesmann.com/iptv/	UnitedStates-og.xml.gz';
     const response = await axios.get(url, { responseType: 'arraybuffer' });
     const xmlBuffer = zlib.gunzipSync(response.data);
     const xmlString = xmlBuffer.toString('utf-8');
