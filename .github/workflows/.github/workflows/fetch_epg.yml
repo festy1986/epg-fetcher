@@ -27,12 +27,10 @@ jobs:
       - name: Fetch 3-day EPG
         run: node fetch_full_epg.js
 
-      - name: Commit filtered XML
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add epg_7day.xml epg_3day.xml
-          git commit -m "Update filtered EPG XML"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload EPG artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: epg-files
+          path: |
+            epg_7day.xml
+            epg_3day.xml
