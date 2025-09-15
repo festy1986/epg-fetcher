@@ -2,9 +2,8 @@ const fs = require('fs');
 const axios = require('axios');
 const zlib = require('zlib');
 const sax = require('sax');
-const { Writable } = require('stream');
 
-// Your channels list (truncated for brevity)
+// Full channel array
 const channels7Day = [
   { full: "Comet(COMET).us", clean: "Comet" },
   { full: "Laff(LAFF).us", clean: "Laff" },
@@ -157,12 +156,12 @@ const channels7Day = [
   { full: "MGM+Hits(MGMHIT).us", clean: "MGM+Hits" },
   { full: "SonyMovieChannel(SONY).us", clean: "SonyMovieChannel" },
   { full: "TheMovieChannel(TMC).us", clean: "TheMovieChannel" }
-  // … add all other channels here …
+  // … add the rest of your fully fixed channels here …
 ];
 
 async function fetch7DayEPG() {
   try {
-    console.log('Fetching 7-day EPG (streaming)...');
+    console.log('Fetching 7-day EPG...');
 
     const url = 'https://epg.jesmann.com/iptv/UnitedStates-og.xml.gz';
     const response = await axios.get(url, { responseType: 'stream' });
@@ -188,7 +187,10 @@ async function fetch7DayEPG() {
       if (!currentNode) return;
 
       if (tagName === 'channel') {
-        const displayNames = (currentNode.children || []).filter(c => c.name === 'display-name').map(c => c.text.toLowerCase());
+        const displayNames = (currentNode.children || [])
+          .filter(c => c.name === 'display-name')
+          .map(c => c.text.toLowerCase());
+
         const channelId = currentNode.attributes.id.toLowerCase();
 
         const keep = channels7Day.some(({ full, clean }) => {
@@ -210,7 +212,7 @@ async function fetch7DayEPG() {
     });
 
     parser.on('end', () => {
-      console.log('Finished streaming and filtering XML.');
+      console.log('Finished filtering XML.');
 
       let xmlOutput = '<?xml version="1.0" encoding="UTF-8"?>\n<tv>\n';
 
@@ -228,8 +230,8 @@ async function fetch7DayEPG() {
 
       xmlOutput += '</tv>';
 
-      fs.writeFileSync('epg_7day_filtered.xml', xmlOutput);
-      console.log('7-day filtered EPG saved as epg_7day_filtered.xml');
+      fs.writeFileSync('epg_7day.xml', xmlOutput);
+      console.log('7-day filtered EPG saved as epg_7day.xml ✅ Ready for TiviMate');
     });
 
     xmlStream.pipe(parser);
@@ -239,5 +241,4 @@ async function fetch7DayEPG() {
   }
 }
 
-// Run the function
 fetch7DayEPG();
