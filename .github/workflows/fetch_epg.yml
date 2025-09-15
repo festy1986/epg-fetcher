@@ -34,4 +34,3 @@ jobs:
           path: |
             epg_7day.xml
             epg_3day.xml
-
