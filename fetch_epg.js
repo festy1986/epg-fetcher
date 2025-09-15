@@ -4,7 +4,7 @@ const zlib = require('zlib');
 const sax = require('sax');
 const { Writable } = require('stream');
 
-// Replace this with your full list of channels
+// Your channels list (truncated for brevity)
 const channels7Day = [
   { full: "Comet(COMET).us", clean: "Comet" },
   { full: "Laff(LAFF).us", clean: "Laff" },
@@ -157,7 +157,7 @@ const channels7Day = [
   { full: "MGM+Hits(MGMHIT).us", clean: "MGM+Hits" },
   { full: "SonyMovieChannel(SONY).us", clean: "SonyMovieChannel" },
   { full: "TheMovieChannel(TMC).us", clean: "TheMovieChannel" }
-  // … add all your other channels here …
+  // … add all other channels here …
 ];
 
 async function fetch7DayEPG() {
@@ -175,7 +175,6 @@ async function fetch7DayEPG() {
     let currentNode = null;
     const filteredChannels = [];
     const filteredPrograms = [];
-    let buffer = '';
 
     parser.on('opentag', (node) => {
       currentNode = { ...node, children: [], text: '' };
@@ -188,7 +187,6 @@ async function fetch7DayEPG() {
     parser.on('closetag', (tagName) => {
       if (!currentNode) return;
 
-      // Handle <channel> nodes
       if (tagName === 'channel') {
         const displayNames = (currentNode.children || []).filter(c => c.name === 'display-name').map(c => c.text.toLowerCase());
         const channelId = currentNode.attributes.id.toLowerCase();
@@ -202,7 +200,6 @@ async function fetch7DayEPG() {
         if (keep) filteredChannels.push(currentNode);
       }
 
-      // Handle <programme> nodes
       if (tagName === 'programme') {
         const channelId = currentNode.attributes.channel;
         const keep = filteredChannels.some(ch => ch.attributes.id === channelId);
@@ -215,7 +212,6 @@ async function fetch7DayEPG() {
     parser.on('end', () => {
       console.log('Finished streaming and filtering XML.');
 
-      // Simple XML builder (you can replace with xml2js.Builder if you want full XML formatting)
       let xmlOutput = '<?xml version="1.0" encoding="UTF-8"?>\n<tv>\n';
 
       filteredChannels.forEach(ch => {
@@ -234,3 +230,14 @@ async function fetch7DayEPG() {
 
       fs.writeFileSync('epg_7day_filtered.xml', xmlOutput);
       console.log('7-day filtered EPG saved as epg_7day_filtered.xml');
+    });
+
+    xmlStream.pipe(parser);
+
+  } catch (err) {
+    console.error('Error fetching 7-day EPG:', err.message);
+  }
+}
+
+// Run the function
+fetch7DayEPG();
