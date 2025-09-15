@@ -1,8 +1,10 @@
-const fs = require('fs-extra');
+const fs = require('fs');
 const axios = require('axios');
 const zlib = require('zlib');
-const xml2js = require('xml2js');
+const sax = require('sax');
+const { Writable } = require('stream');
 
+// Replace this with your full list of channels
 const channels7Day = [
   { full: "Comet(COMET).us", clean: "Comet" },
   { full: "Laff(LAFF).us", clean: "Laff" },
@@ -155,49 +157,80 @@ const channels7Day = [
   { full: "MGM+Hits(MGMHIT).us", clean: "MGM+Hits" },
   { full: "SonyMovieChannel(SONY).us", clean: "SonyMovieChannel" },
   { full: "TheMovieChannel(TMC).us", clean: "TheMovieChannel" }
+  // … add all your other channels here …
 ];
 
 async function fetch7DayEPG() {
   try {
-    console.log('Fetching 7-day EPG...');
+    console.log('Fetching 7-day EPG (streaming)...');
 
     const url = 'https://epg.jesmann.com/iptv/UnitedStates-og.xml.gz';
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const response = await axios.get(url, { responseType: 'stream' });
 
-    const xmlBuffer = zlib.gunzipSync(response.data);
-    const xmlString = xmlBuffer.toString('utf-8');
+    const gunzip = zlib.createGunzip();
+    const xmlStream = response.data.pipe(gunzip);
 
-    const parsed = await xml2js.parseStringPromise(xmlString);
+    const parser = sax.createStream(true); // strict mode
 
-    const filteredChannels = parsed.tv.channel.filter(ch => {
-      const displayNames = (ch['display-name'] || []).map(d => d.toLowerCase());
-      const channelId = ch.$.id.toLowerCase();
+    let currentNode = null;
+    const filteredChannels = [];
+    const filteredPrograms = [];
+    let buffer = '';
 
-      return channels7Day.some(({ full, clean }) => {
-        return channelId.includes(full.toLowerCase()) ||
-               channelId.includes(clean.toLowerCase()) ||
-               displayNames.some(dn => dn.includes(full.toLowerCase()) || dn.includes(clean.toLowerCase()));
-      });
+    parser.on('opentag', (node) => {
+      currentNode = { ...node, children: [], text: '' };
     });
 
-    const filteredPrograms = parsed.tv.programme.filter(pr => {
-      return filteredChannels.some(ch => ch.$.id === pr.$.channel);
+    parser.on('text', (text) => {
+      if (currentNode) currentNode.text += text;
     });
 
-    const builder = new xml2js.Builder();
-    const finalXml = builder.buildObject({
-      tv: {
-        $: parsed.tv.$,
-        channel: filteredChannels,
-        programme: filteredPrograms
+    parser.on('closetag', (tagName) => {
+      if (!currentNode) return;
+
+      // Handle <channel> nodes
+      if (tagName === 'channel') {
+        const displayNames = (currentNode.children || []).filter(c => c.name === 'display-name').map(c => c.text.toLowerCase());
+        const channelId = currentNode.attributes.id.toLowerCase();
+
+        const keep = channels7Day.some(({ full, clean }) => {
+          return channelId.includes(full.toLowerCase()) ||
+                 channelId.includes(clean.toLowerCase()) ||
+                 displayNames.some(dn => dn.includes(full.toLowerCase()) || dn.includes(clean.toLowerCase()));
+        });
+
+        if (keep) filteredChannels.push(currentNode);
       }
+
+      // Handle <programme> nodes
+      if (tagName === 'programme') {
+        const channelId = currentNode.attributes.channel;
+        const keep = filteredChannels.some(ch => ch.attributes.id === channelId);
+        if (keep) filteredPrograms.push(currentNode);
+      }
+
+      currentNode = null;
     });
 
-    await fs.outputFile('epg_7day_filtered.xml', finalXml);
-    console.log('7-day filtered EPG saved as epg_7day_filtered.xml');
-  } catch (err) {
-    console.error('Error fetching 7-day EPG:', err.message);
-  }
-}
+    parser.on('end', () => {
+      console.log('Finished streaming and filtering XML.');
 
-fetch7DayEPG();
+      // Simple XML builder (you can replace with xml2js.Builder if you want full XML formatting)
+      let xmlOutput = '<?xml version="1.0" encoding="UTF-8"?>\n<tv>\n';
+
+      filteredChannels.forEach(ch => {
+        xmlOutput += `<channel id="${ch.attributes.id}">\n`;
+        ch.children.forEach(c => xmlOutput += `<${c.name}>${c.text}</${c.name}>\n`);
+        xmlOutput += `</channel>\n`;
+      });
+
+      filteredPrograms.forEach(pr => {
+        xmlOutput += `<programme channel="${pr.attributes.channel}" start="${pr.attributes.start}" stop="${pr.attributes.stop}">\n`;
+        pr.children.forEach(c => xmlOutput += `<${c.name}>${c.text}</${c.name}>\n`);
+        xmlOutput += `</programme>\n`;
+      });
+
+      xmlOutput += '</tv>';
+
+      fs.writeFileSync('epg_7day_filtered.xml', xmlOutput);
+      console.log('7-day filtered EPG saved as e
