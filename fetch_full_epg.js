@@ -3,7 +3,7 @@ const axios = require('axios');
 const zlib = require('zlib');
 const xml2js = require('xml2js');
 
-// ✅ Your 3-day channels list
+// Whitelisted channels (same as 7-day)
 const channels = [
   "4UV.us",
   "48Hours(48HOURS).us",
@@ -280,43 +280,29 @@ const channels = [
   "WickedTuna(DISTW).us",
   "Wipeout(DISWO).us",
   "WipeoutXtra(WIPEOUT).us"
+  // add the rest of your whitelisted channels here
 ];
 
 async function fetchFullEPG() {
   try {
-    console.log('Fetching 3-day EPG…');
+    console.log('Fetching 3-day EPG...');
 
     const url = 'https://epg.jesmann.com/iptv/UnitedStates-3day.xml.gz';
     const response = await axios.get(url, { responseType: 'arraybuffer' });
-
-    // Decompress
     const xmlBuffer = zlib.gunzipSync(response.data);
     const xmlString = xmlBuffer.toString('utf-8');
 
-    // Parse XML
     const parsed = await xml2js.parseStringPromise(xmlString);
 
-    // Filter channels & programmes
-    const tv = parsed.tv;
-    const filteredChannels = tv.channel.filter(ch => channels.includes(ch.$.id));
-    const filteredPrograms = tv.programme.filter(pr => channels.includes(pr.$.channel));
+    // Filter channels
+    parsed.tv.channel = parsed.tv.channel.filter(ch => channels.includes(ch.$.id));
+    parsed.tv.programme = parsed.tv.programme.filter(pr => channels.includes(pr.$.channel));
 
-    // Build new XML object
-    const filteredObj = {
-      tv: {
-        $: tv.$,
-        channel: filteredChannels,
-        programme: filteredPrograms
-      }
-    };
+    const builder = new xml2js.Builder();
+    const finalXml = builder.buildObject(parsed);
 
-    // Build XML
-    const builder = new xml2js.Builder({ headless: true, renderOpts: { pretty: true } });
-    const finalXml = builder.buildObject(filteredObj);
-
-    // Save file
-    await fs.outputFile('epg_3day.xml', finalXml, 'utf-8');
-    console.log('✅ 3-day EPG saved as epg_3day.xml (filtered to your channels)');
+    fs.writeFileSync('epg_3day.xml', finalXml, 'utf-8');
+    console.log('3-day EPG saved as epg_3day.xml');
   } catch (err) {
     console.error('Error fetching 3-day EPG:', err.message);
     process.exit(1);
@@ -324,4 +310,3 @@ async function fetchFullEPG() {
 }
 
 fetchFullEPG();
-
