@@ -1,13 +1,8 @@
-#!/usr/bin/env node
-'use strict';
-
-const https = require('https');
-const fs = require('fs');
+const fs = require('fs-extra');
+const axios = require('axios');
 const zlib = require('zlib');
-const sax = require('sax');
-const { pipeline } = require('stream');
+const xml2js = require('xml2js');
 
-// Whitelisted channels for 7-day EPG
 const channels7Day = [
   "Comet(COMET).us",
   "Laff(LAFF).us",
@@ -17,7 +12,6 @@ const channels7Day = [
   "NBC(WBTSCD).us",
   "NBC(WCSH).us",
   "ABC(WCVB).us",
-  "ABC(WMTW).us",
   "NewEnglandCableNews(NECN).us",
   "PBS(HD01).us",
   "CW(WLVI).us",
@@ -161,63 +155,203 @@ const channels7Day = [
   "MGM+Hits(MGMHIT).us",
   "SonyMovieChannel(SONY).us",
   "TheMovieChannel(TMC).us"
+const channels7Day = [
+  "Comet",
+  "Laff",
+  "ABC",
+  "FOX",
+  "FOX",
+  "NBC",
+  "NBC",
+  "ABC",
+  "NewEnglandCableNews",
+  "PBS",
+  "CW",
+  "CBS",
+  "WSBK",
+  "CBS",
+  "ION",
+  "MeTVNetwork",
+  "INSPHD",
+  "GameShowNetwork",
+  "FamilyEntertainmentTelevision",
+  "Heroes&IconsNetwork",
+  "TurnerClassicMoviesHD",
+  "OprahWinfreyNetwork",
+  "BET",
+  "DiscoveryChannel",
+  "Freeform",
+  "USANetwork",
+  "NewEnglandSportsNetwork",
+  "NewEnglandSportsNetworkPlus",
+  "NBCSportsBoston",
+  "ESPN",
+  "ESPN2",
+  "ESPNEWS",
+  "AWealthofEntertainmentHD",
+  "WEtv",
+  "OxygenTrueCrime",
+  "DisneyChannel",
+  "DisneyJunior",
+  "DisneyXD",
+  "CartoonNetwork",
+  "Nickelodeon",
+  "MSNBC",
+  "CableNewsNetwork",
+  "HLN",
+  "CNBC",
+  "FoxNewsChannel",
+  "LifetimeRealWomen",
+  "TNT",
+  "Lifetime",
+  "LMN",
+  "TLC",
+  "AMC",
+  "Home&GardenTelevisionHD",
+  "TheTravelChannel",
+  "A&E",
+  "FoodNetwork",
+  "Bravo",
+  "truTV",
+  "NationalGeographicHD",
+  "HallmarkChannel",
+  "HallmarkFamily",
+  "HallmarkMystery",
+  "SYFY",
+  "AnimalPlanet",
+  "History",
+  "TheWeatherChannel",
+  "ParamountNetwork",
+  "ComedyCentral",
+  "FXM",
+  "FXX",
+  "FX",
+  "E!EntertainmentTelevisionHD",
+  "AXSTV",
+  "TVLand",
+  "TBS",
+  "VH1",
+  "MTV-MusicTelevision",
+  "CMT",
+  "DestinationAmerica",
+  "MagnoliaNetwork",
+  "MagnoliaNetworkHD(Pacific)",
+  "DiscoveryLifeChannel",
+  "NationalGeographicWild",
+  "SmithsonianChannelHD",
+  "BBCAmerica",
+  "POP",
+  "Crime&InvestigationNetworkHD",
+  "Vice",
+  "InvestigationDiscoveryHD",
+  "ReelzChannel",
+  "DiscoveryFamilyChannel",
+  "Science",
+  "AmericanHeroesChannel",
+  "AMC+",
+  "Fuse",
+  "MusicTelevisionHD",
+  "IFC",
+  "FYI",
+  "CookingChannel",
+  "Logo",
+  "AdultSwim",
+  "ANTENNA",
+  "CHARGE!",
+  "FS1",
+  "FS2",
+  "NFLNetwork",
+  "NHLNetwork",
+  "MLBNetwork",
+  "NBATV",
+  "CBSSportsNetwork",
+  "Ovation",
+  "UPTV",
+  "COZITV",
+  "OutdoorChannel",
+  "ASPiRE",
+  "HBO",
+  "HBO2",
+  "HBOComedy",
+  "HBOSignature",
+  "HBOWest",
+  "HBOZone",
+  "CinemaxHD",
+  "MoreMAX",
+  "ActionMAX",
+  "5StarMAX",
+  "Paramount+withShowtimeOnDemand",
+  "ShowtimeExtreme",
+  "ShowtimeNext",
+  "ShowtimeShowcase",
+  "ShowtimeFamilyzone",
+  "ShowtimeWomen",
+  "Starz",
+  "StarzEdge",
+  "StarzCinema",
+  "StarzComedy",
+  "StarzEncore",
+  "StarzEncoreBlack",
+  "StarzEncoreClassic",
+  "StarzEncoreFamily",
+  "StarzEncoreWesterns",
+  "StarzKids",
+  "StarzEncoreAction",
+  "ScreenPix",
+  "ScreenPixAction",
+  "ScreenPixVoices",
+  "ScreenPixWesterns",
+  "MoviePlex",
+  "MGM+Drive-In",
+  "MGM+HD",
+  "MGM+Hits",
+  "SonyMovieChannel",
+  "TheMovieChannel"
 ];
 
-// EPG URL
-const EPG_URL = 'https://epg.jesmann.com/iptv/UnitedStates-og.xml.gz';
+  // Add more from your whitelist
+];
 
-// Output file
-const OUTPUT_FILE = 'epg_7day_filtered.xml';
+async function fetch7DayEPG() {
+  try {
+    console.log('Fetching 7-day EPG...');
 
-// Create sax stream
-const saxStream = sax.createStream(true, { trim: true });
-const outputStream = fs.createWriteStream(OUTPUT_FILE);
-let insideChannel = false;
-let insideProgram = false;
+    const url = 'https://epg.jesmann.com/iptv/UnitedStates-og.xml.gz';
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
 
-saxStream.on('opentag', node => {
-  if (node.name === 'channel' && channels7Day.includes(node.attributes.id)) {
-    insideChannel = true;
-    outputStream.write(`<channel id="${node.attributes.id}">`);
-  } else if (node.name === 'programme' && channels7Day.includes(node.attributes.channel)) {
-    insideProgram = true;
-    let attrs = Object.entries(node.attributes)
-      .map(([k, v]) => `${k}="${v}"`)
-      .join(' ');
-    outputStream.write(`<programme ${attrs}>`);
+    const xmlBuffer = zlib.gunzipSync(response.data);
+    const xmlString = xmlBuffer.toString('utf-8');
+
+    const parsed = await xml2js.parseStringPromise(xmlString);
+
+    const filteredChannels = parsed.tv.channel.filter(ch => {
+      return channels7Day.some(name => {
+        const display1 = ch['display-name']?.[0]?.toLowerCase() || '';
+        const display2 = ch['display-name']?.[1]?.toLowerCase() || '';
+        return ch.$.id.toLowerCase().includes(name.toLowerCase()) ||
+               display1.includes(name.toLowerCase()) ||
+               display2.includes(name.toLowerCase());
+      });
+    });
+
+    const filteredPrograms = parsed.tv.programme.filter(pr => {
+      return filteredChannels.some(ch => ch.$.id === pr.$.channel);
+    });
+
+    const builder = new xml2js.Builder();
+    const finalXml = builder.buildObject({
+      tv: {
+        $: parsed.tv.$,
+        channel: filteredChannels,
+        programme: filteredPrograms
+      }
+    });
+
+    await fs.outputFile('epg_7day_filtered.xml', finalXml);
+    console.log('7-day filtered EPG saved as epg_7day_filtered.xml');
+  } catch (err) {
+    console.error('Error fetching 7-day EPG:', err.message);
   }
-});
+}
 
-saxStream.on('text', text => {
-  if (insideChannel || insideProgram) outputStream.write(text);
-});
-
-saxStream.on('closetag', name => {
-  if (name === 'channel' && insideChannel) {
-    outputStream.write(`</channel>`);
-    insideChannel = false;
-  } else if (name === 'programme' && insideProgram) {
-    outputStream.write(`</programme>`);
-    insideProgram = false;
-  }
-});
-
-saxStream.on('error', err => {
-  console.error('SAX parse error:', err);
-  process.exit(1);
-});
-
-saxStream.on('end', () => {
-  console.log('7-day filtered EPG saved as', OUTPUT_FILE);
-});
-
-// Stream the gzipped file from URL
-https.get(EPG_URL, res => {
-  const gunzip = zlib.createGunzip();
-  pipeline(res, gunzip, saxStream, err => {
-    if (err) {
-      console.error('Pipeline failed:', err);
-      process.exit(1);
-    }
-  });
-});
+fetch7DayEPG();
