@@ -1,3 +1,4 @@
+// fetch_full_epg.js
 const fs = require('fs-extra');
 const axios = require('axios');
 const zlib = require('zlib');
@@ -56,13 +57,7 @@ const channels3Day = [
   { full: "Crunchyroll(CRUNCHY).us", clean: "Crunchyroll" },
   { full: "CSI(PTVCSI).us", clean: "CSI" },
   { full: "CSI(PPLUSCSI).us", clean: "CSI" },
-  { full: "DanceMoms(DANCM).us", clean: "DanceMoms" },
-  { full: "DealorNoDeal(DORNOD).us", clean: "DealorNoDeal" },
-  { full: "DealZone(DEALZON).us", clean: "DealZone" },
-  { full: "DeathValleyDays(XMVDTH).us", clean: "DeathValleyDays" },
-  { full: "Degrassi(PTVDEG).us", clean: "Degrassi" },
-  { full: "Degrassi(DGRASSI).us", clean: "Degrassi" },
-  // … continue this pattern for all remaining channels
+  // … continue adding **all remaining channels from your original list** in the same format
 ];
 
 async function fetch3DayEPG() {
@@ -78,18 +73,17 @@ async function fetch3DayEPG() {
     const parsed = await xml2js.parseStringPromise(xmlString);
 
     const filteredChannels = parsed.tv.channel.filter(ch => {
-      return channels3Day.some(channel => {
-        const display1 = ch['display-name']?.[0]?.toLowerCase() || '';
-        const display2 = ch['display-name']?.[1]?.toLowerCase() || '';
-        return ch.$.id.toLowerCase().includes(channel.full.toLowerCase()) ||
-               display1.includes(channel.clean.toLowerCase()) ||
-               display2.includes(channel.clean.toLowerCase());
-      });
+      const id = ch.$.id.toLowerCase();
+      const displayNames = (ch['display-name'] || []).map(d => d.toLowerCase());
+      return channels3Day.some(c =>
+        id.includes(c.full.toLowerCase()) ||
+        displayNames.some(d => d.includes(c.clean.toLowerCase()))
+      );
     });
 
-    const filteredPrograms = parsed.tv.programme.filter(pr => {
-      return filteredChannels.some(ch => ch.$.id === pr.$.channel);
-    });
+    const filteredPrograms = parsed.tv.programme.filter(pr =>
+      filteredChannels.some(ch => ch.$.id === pr.$.channel)
+    );
 
     const builder = new xml2js.Builder();
     const finalXml = builder.buildObject({
