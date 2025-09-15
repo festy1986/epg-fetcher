@@ -1,0 +1,36 @@
+name: Fetch EPG
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # allows manual run from GitHub UI
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run EPG fetch script
+        run: node fetch_epg.js
+
+      - name: Commit and push generated XML
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "github-actions@github.com"
+          git add *.xml
+          git commit -m "Update EPG XML"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
