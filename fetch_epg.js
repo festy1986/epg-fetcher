@@ -21,7 +21,7 @@ const channels = [
   "WSBK.us",
   "CBS(WGME).us",
   "ION.us",
-  "MeTVNetwork(METVN).us",
+  "MeTVNetwork(METVN).us"
   "INSPHD(INSPHD).us",
   "GameShowNetwork(GSN).us",
   "FamilyEntertainmentTelevision(FETV).us",
