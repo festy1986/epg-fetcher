@@ -279,7 +279,6 @@ const channels3Day = [
   "WickedTuna(DISTW).us",
   "Wipeout(DISWO).us",
   "WipeoutXtra(WIPEOUT).us"
-  const channels3Day = [
   "4UV",
   "48Hours",
   "60Minutes",
