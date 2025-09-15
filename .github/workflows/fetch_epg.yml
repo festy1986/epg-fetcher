@@ -2,21 +2,18 @@ name: Fetch EPG
 
 on:
   push:
-    branches:
-      - main
-  schedule:
-    # Daily at 3:00 UTC
-    - cron: "0 3 * * *"
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build:
+  fetch-epg:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
@@ -25,21 +22,15 @@ jobs:
         run: npm install
 
       - name: Run 7-day EPG fetch
-        run: node fetch_epg.js
-        env:
-          NODE_ENV: production
+        run: node fetch_epg.js > epg_7day.xml
 
-      - name: Run 3-day full EPG fetch
-        run: node fetch_full_epg.js
-        env:
-          NODE_ENV: production
+      - name: Run 3-day EPG fetch
+        run: node fetch_full_epg.js > epg_3day.xml
 
-      - name: Commit and push EPG output
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add epg_output.xml
-          git commit -m "Update EPG output"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload generated EPG files
+        uses: actions/upload-artifact@v3
+        with:
+          name: epg-files
+          path: |
+            epg_7day.xml
+            epg_3day.xml
