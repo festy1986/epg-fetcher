@@ -39,3 +39,4 @@ jobs:
           git push https://$GH_PAT@github.com/festy1986/epg-fetcher.git HEAD:main
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
+
