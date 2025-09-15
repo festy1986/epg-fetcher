@@ -28,7 +28,7 @@ jobs:
         run: node fetch_full_epg.js > epg_3day.xml
 
       - name: Upload generated EPG files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: epg-files
           path: |
