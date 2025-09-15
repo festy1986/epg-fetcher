@@ -1,10 +1,9 @@
 const fs = require('fs-extra');
 const axios = require('axios');
-const pako = require('pako');
+const zlib = require('zlib');
 const xml2js = require('xml2js');
-const cliProgress = require('cli-progress');
 
-// Channels list (same as 7-day)
+// ✅ Your 3-day channels list
 const channels = [
   "4UV.us",
   "48Hours(48HOURS).us",
@@ -281,48 +280,48 @@ const channels = [
   "WickedTuna(DISTW).us",
   "Wipeout(DISWO).us",
   "WipeoutXtra(WIPEOUT).us"
-  // Add the rest of your .us channels here
 ];
 
 async function fetchFullEPG() {
-    try {
-        console.log('Fetching 3-day EPG...');
+  try {
+    console.log('Fetching 3-day EPG…');
 
-        // Replace with your actual 3-day EPG URL
-        const url = 'https://epg.jesmann.com/iptv/UnitedStates-3day.xml.gz';
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
-        const decompressed = pako.ungzip(response.data, { to: 'string' });
+    const url = 'https://epg.jesmann.com/iptv/UnitedStates-3day.xml.gz';
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
 
-        const parser = new xml2js.Parser();
-        const result = await parser.parseStringPromise(decompressed);
+    // Decompress
+    const xmlBuffer = zlib.gunzipSync(response.data);
+    const xmlString = xmlBuffer.toString('utf-8');
 
-        // Filter channels
-        const filteredChannels = result.tv.channel.filter(ch => {
-            return channels.includes(ch.$.id);
-        });
+    // Parse XML
+    const parsed = await xml2js.parseStringPromise(xmlString);
 
-        const filteredPrograms = result.tv.programme.filter(pr => {
-            return channels.includes(pr.$.channel);
-        });
+    // Filter channels & programmes
+    const tv = parsed.tv;
+    const filteredChannels = tv.channel.filter(ch => channels.includes(ch.$.id));
+    const filteredPrograms = tv.programme.filter(pr => channels.includes(pr.$.channel));
 
-        // Rebuild XML
-        const builder = new xml2js.Builder();
-        const xmlObj = {
-            tv: {
-                $: result.tv.$,
-                channel: filteredChannels,
-                programme: filteredPrograms
-            }
-        };
+    // Build new XML object
+    const filteredObj = {
+      tv: {
+        $: tv.$,
+        channel: filteredChannels,
+        programme: filteredPrograms
+      }
+    };
 
-        const xml = builder.buildObject(xmlObj);
+    // Build XML
+    const builder = new xml2js.Builder({ headless: true, renderOpts: { pretty: true } });
+    const finalXml = builder.buildObject(filteredObj);
 
-        // Save to file
-        await fs.outputFile('epg_3day.xml', xml);
-        console.log('3-day EPG saved as epg_3day.xml');
-    } catch (err) {
-        console.error('Error fetching 3-day EPG:', err.message);
-    }
+    // Save file
+    await fs.outputFile('epg_3day.xml', finalXml, 'utf-8');
+    console.log('✅ 3-day EPG saved as epg_3day.xml (filtered to your channels)');
+  } catch (err) {
+    console.error('Error fetching 3-day EPG:', err.message);
+    process.exit(1);
+  }
 }
 
 fetchFullEPG();
+
