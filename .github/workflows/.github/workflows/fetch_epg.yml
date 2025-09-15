@@ -1,13 +1,12 @@
-name: fetch_epg
+name: Fetch EPG
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # daily at midnight UTC
 
 jobs:
-  build:
+  fetch:
     runs-on: ubuntu-latest
 
     steps:
@@ -15,17 +14,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '20'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Run fetch_epg.js (7-day)
+      - name: Fetch 7-day EPG
         run: node fetch_epg.js > epg_7day.xml
 
-      - name: Run fetch_full_epg.js (3-day)
+      - name: Fetch 3-day EPG
         run: node fetch_full_epg.js > epg_3day.xml
 
       - name: Upload EPG artifacts
@@ -35,4 +34,3 @@ jobs:
           path: |
             epg_7day.xml
             epg_3day.xml
-
