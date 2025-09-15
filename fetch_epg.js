@@ -155,7 +155,6 @@ const channels7Day = [
   "MGM+Hits(MGMHIT).us",
   "SonyMovieChannel(SONY).us",
   "TheMovieChannel(TMC).us"
-const channels7Day = [
   "Comet",
   "Laff",
   "ABC",
