@@ -1,8 +1,9 @@
-const fs = require('fs');
+const fs = require('fs-extra');
 const axios = require('axios');
 const zlib = require('zlib');
-const sax = require('sax');
+const xml2js = require('xml2js');
 
+// Whitelisted channels (same as 7-day)
 const channels = [
   "4UV.us",
   "48Hours(48HOURS).us",
@@ -279,50 +280,35 @@ const channels = [
   "WickedTuna(DISTW).us",
   "Wipeout(DISWO).us",
   "WipeoutXtra(WIPEOUT).us"
-  // add all your 3-day channels here...
+  // add the rest of your whitelisted channels here
 ];
 
 async function fetchFullEPG() {
   try {
     console.log('Fetching 3-day EPG...');
 
-    const url = 'https://epg.jesmann.com/iptv/UnitedStates-3day.xml.gz';
+    const url = 'https://epg.jesmann.com/iptv/USFast.xml.gz';
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const xmlBuffer = zlib.gunzipSync(response.data);
+    const xmlString = xmlBuffer.toString('utf-8');
 
-    const response = await axios({
-      method: 'get',
-      url,
-      responseType: 'stream'
-    });
+    const parsed = await xml2js.parseStringPromise(xmlString);
 
-    const gunzip = zlib.createGunzip();
-    const parser = sax.createStream(true, { trim: true });
+    // Filter only whitelisted channels
+    const filteredChannels = parsed.tv.channel.filter(ch => channels.includes(ch.$.id));
+    const filteredPrograms = parsed.tv.programme.filter(pr => channels.includes(pr.$.channel));
 
-    let writeStream = fs.createWriteStream('epg_3day.xml');
-    writeStream.write('<tv>\n');
-
-    parser.on('opentag', node => {
-      if (node.name === 'channel' && channels.includes(node.attributes.id)) {
-        writeStream.write(`<channel id="${node.attributes.id}">\n`);
-      }
-      if (node.name === 'programme' && channels.includes(node.attributes.channel)) {
-        writeStream.write(`<programme channel="${node.attributes.channel}" start="${node.attributes.start}" stop="${node.attributes.stop}">\n`);
+    const builder = new xml2js.Builder();
+    const finalXml = builder.buildObject({
+      tv: {
+        $: parsed.tv.$,
+        channel: filteredChannels,
+        programme: filteredPrograms
       }
     });
 
-    parser.on('closetag', name => {
-      if (name === 'channel' || name === 'programme') {
-        writeStream.write(`</${name}>\n`);
-      }
-    });
-
-    parser.on('end', () => {
-      writeStream.write('</tv>\n');
-      writeStream.close();
-      console.log('3-day EPG saved as epg_3day.xml');
-    });
-
-    response.data.pipe(gunzip).pipe(parser);
-
+    fs.writeFileSync('epg_3day.xml', finalXml, 'utf-8');
+    console.log('3-day EPG saved as epg_3day.xml');
   } catch (err) {
     console.error('Error fetching 3-day EPG:', err.message);
     process.exit(1);
