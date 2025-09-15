@@ -1,20 +1,14 @@
 {
-  "name": "epgfetcher",
+  "name": "epg-fetcher",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "fetch_epg.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "fetch-7day": "node fetch_epg.js",
+    "fetch-3day": "node fetch_full_epg.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "axios": "^1.12.2",
-    "dayjs": "^1.11.18",
-    "epg-parser": "^0.4.0",
-    "iconv-lite": "^0.7.0",
-    "pako": "^2.1.0",
-    "xmlbuilder": "^15.1.1"
+    "fs-extra": "^11.1.1",
+    "xml2js": "^0.4.23"
   }
 }
