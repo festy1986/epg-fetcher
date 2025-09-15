@@ -1,11 +1,14 @@
-const fs = require('fs-extra');
-const axios = require('axios');
-const zlib = require('zlib');
-const xml2js = require('xml2js');
+#!/usr/bin/env node
+'use strict';
 
-// Whitelisted channels (same as 7-day)
-const channels = [
-const channelsFullEPG = [
+const https = require('https');
+const fs = require('fs');
+const zlib = require('zlib');
+const sax = require('sax');
+const { pipeline } = require('stream');
+
+// Whitelisted channels for 3-day EPG
+const channels3Day = [
   "4UV.us",
   "48Hours(48HOURS).us",
   "60Minutes(60MINS).us",
@@ -283,39 +286,61 @@ const channelsFullEPG = [
   "WipeoutXtra(WIPEOUT).us"
 ];
 
-  // add the rest of your whitelisted channels here
-];
+// EPG URL
+const EPG_URL = 'https://epg.jesmann.com/iptv/USFast.xml.gz';
 
-async function fetchFullEPG() {
-  try {
-    console.log('Fetching 3-day EPG...');
+// Output file
+const OUTPUT_FILE = 'epg_3day_filtered.xml';
 
-    const url = 'https://epg.jesmann.com/iptv/USFast.xml.gz';
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
-    const xmlBuffer = zlib.gunzipSync(response.data);
-    const xmlString = xmlBuffer.toString('utf-8');
+// Create sax stream
+const saxStream = sax.createStream(true, { trim: true });
+const outputStream = fs.createWriteStream(OUTPUT_FILE);
+let insideChannel = false;
+let insideProgram = false;
 
-    const parsed = await xml2js.parseStringPromise(xmlString);
-
-    // Filter only whitelisted channels
-    const filteredChannels = parsed.tv.channel.filter(ch => channels.includes(ch.$.id));
-    const filteredPrograms = parsed.tv.programme.filter(pr => channels.includes(pr.$.channel));
-
-    const builder = new xml2js.Builder();
-    const finalXml = builder.buildObject({
-      tv: {
-        $: parsed.tv.$,
-        channel: filteredChannels,
-        programme: filteredPrograms
-      }
-    });
-
-    fs.writeFileSync('epg_3day.xml', finalXml, 'utf-8');
-    console.log('3-day EPG saved as epg_3day.xml');
-  } catch (err) {
-    console.error('Error fetching 3-day EPG:', err.message);
-    process.exit(1);
+saxStream.on('opentag', node => {
+  if (node.name === 'channel' && channels3Day.includes(node.attributes.id)) {
+    insideChannel = true;
+    outputStream.write(`<channel id="${node.attributes.id}">`);
+  } else if (node.name === 'programme' && channels3Day.includes(node.attributes.channel)) {
+    insideProgram = true;
+    let attrs = Object.entries(node.attributes)
+      .map(([k, v]) => `${k}="${v}"`)
+      .join(' ');
+    outputStream.write(`<programme ${attrs}>`);
   }
-}
+});
 
-fetchFullEPG();
+saxStream.on('text', text => {
+  if (insideChannel || insideProgram) outputStream.write(text);
+});
+
+saxStream.on('closetag', name => {
+  if (name === 'channel' && insideChannel) {
+    outputStream.write(`</channel>`);
+    insideChannel = false;
+  } else if (name === 'programme' && insideProgram) {
+    outputStream.write(`</programme>`);
+    insideProgram = false;
+  }
+});
+
+saxStream.on('error', err => {
+  console.error('SAX parse error:', err);
+  process.exit(1);
+});
+
+saxStream.on('end', () => {
+  console.log('3-day filtered EPG saved as', OUTPUT_FILE);
+});
+
+// Stream the gzipped file from URL
+https.get(EPG_URL, res => {
+  const gunzip = zlib.createGunzip();
+  pipeline(res, gunzip, saxStream, err => {
+    if (err) {
+      console.error('Pipeline failed:', err);
+      process.exit(1);
+    }
+  });
+});
