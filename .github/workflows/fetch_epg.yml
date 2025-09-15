@@ -47,4 +47,3 @@ jobs:
           git add epg_7day.xml epg_3day.xml
           git commit -m "Update EPG XML files" || echo "No changes to commit"
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
-
