@@ -1,13 +1,8 @@
-#!/usr/bin/env node
-'use strict';
-
-const https = require('https');
-const fs = require('fs');
+const fs = require('fs-extra');
+const axios = require('axios');
 const zlib = require('zlib');
-const sax = require('sax');
-const { pipeline } = require('stream');
+const xml2js = require('xml2js');
 
-// Whitelisted channels for 3-day EPG
 const channels3Day = [
   "4UV.us",
   "48Hours(48HOURS).us",
@@ -284,63 +279,327 @@ const channels3Day = [
   "WickedTuna(DISTW).us",
   "Wipeout(DISWO).us",
   "WipeoutXtra(WIPEOUT).us"
+  const channels3Day = [
+  "4UV",
+  "48Hours",
+  "60Minutes",
+  "AccordingtoJim",
+  "AcornTVMysteries",
+  "AdultAnimation",
+  "ALF",
+  "AlfredHitchcockPresents",
+  "AlienNationbyDUST",
+  "AllRealityWEtv",
+  "AllWeddingsWEtv",
+  "America'sDumbestCriminals",
+  "AmericanCrimes",
+  "AmericanNinjaWarrior",
+  "AncientAliens",
+  "AngerManagement",
+  "AntiquesRoadshowUK",
+  "AttheMovies",
+  "AxMen",
+  "Backstage",
+  "BadGirlsClub",
+  "BarRescue",
+  "Baywatch",
+  "BestofDr.Phil",
+  "BeyondBelief",
+  "BeyondBelief:FactorFiction!",
+  "BravoVault",
+  "BritBoxMysteries",
+  "BritBoxMysteries",
+  "BUZZRStream",
+  "CarChase",
+  "CelebrityNameGame",
+  "Cheaters",
+  "CINEVAULT",
+  "CINEVAULTWesterns",
+  "CINEVAULT:Classics",
+  "CINEVAULT:Westerns",
+  "ClassicDoctorWho",
+  "ClassicDoctorWho",
+  "ColdCaseFiles",
+  "ColdCaseFiles",
+  "CombatWarChannel",
+  "ComedyDynamics",
+  "ConfessbyNosey",
+  "CornerGas",
+  "CourtTV",
+  "CourtTVLegendaryTrials",
+  "Crime&Justice",
+  "CrimeScenes",
+  "Crunchyroll",
+  "CSI",
+  "CSI",
+  "DanceMoms",
+  "DealorNoDeal",
+  "DealZone",
+  "DeathValleyDays",
+  "Degrassi",
+  "Degrassi",
+  "Dinos24/7",
+  "DivorceCourt",
+  "DivorceCourt",
+  "DNUTastemadeEnEspañol",
+  "Documentary+",
+  "DogtheBountyHunter",
+  "DogtheBountyHunter",
+  "DuckDynasty",
+  "E!KeepingUp",
+  "ElReyRebel",
+  "FamilyFeud",
+  "FamilyFeud",
+  "FamilyFeudClassic",
+  "FamilyUnscripted",
+  "Farscape",
+  "FBIFiles",
+  "FearFactorUSA",
+  "FGTeeV",
+  "FilmRiseAction",
+  "FilmRiseAction",
+  "FilmRiseAction",
+  "FilmRiseBritishTV",
+  "FilmRiseBritishTV",
+  "FilmRiseClassicTV",
+  "FilmRiseFreeMovies",
+  "FilmRiseFreeMovies",
+  "FilmRiseFreeMovies",
+  "FilmRiseFreeMovies",
+  "FilmRiseTrueCrime",
+  "FNENashville",
+  "Food52",
+  "ForensicFiles",
+  "ForensicFiles",
+  "ForensicFiles",
+  "ForensicFiles",
+  "GeneralHospital",
+  "get",
+  "GETComedy",
+  "GrandDesigns",
+  "GreenAcres",
+  "GrowingUpHipHopWEtv",
+  "Harlem",
+  "History&Undiscovered",
+  "HunterxHunter",
+  "IceRoadTruckers",
+  "IceRoadTruckers",
+  "ImpactWrestling",
+  "Isn'tItRomantic",
+  "Judge&Jury",
+  "JudgeNosey",
+  "JudyJustice",
+  "JudyJustice",
+  "Kids&FamilyFun",
+  "Law&CrimeRewind",
+  "Law&CrimeStream",
+  "Leverage",
+  "LoveAfterLockupWeTV",
+  "MagellanTVWildest",
+  "MeatEater",
+  "MGMPresents",
+  "MGMPresents:Action",
+  "MGMPresents:Horror",
+  "MGMPresents:Westerns",
+  "MidsomerMurders",
+  "MilitaryHeroes",
+  "MiramaxMovieChannel",
+  "ModernMarvels",
+  "Moovimex",
+  "Moviesphere",
+  "Moviesphere",
+  "MysteriousWorlds",
+  "Naruto",
+  "NASA+",
+  "NashBridges",
+  "Nashville",
+  "NationalLampoon",
+  "NBC",
+  "NBCNashville(WSMV4)",
+  "News13CentralFL-STVA",
+  "Nikita",
+  "Nosey",
+  "Nosey",
+  "NoseyonPeacock",
+  "NostalgicHits",
+  "OnTheTelly",
+  "OuterSphere",
+  "Outlaw",
+  "Overtime",
+  "OxygenTrueCrimeArchives",
+  "ParanormalFiles",
+  "ParanormalFiles",
+  "ParanormalFiles",
+  "PAWPatrol",
+  "Perform",
+  "Places&Spaces",
+  "PlutoAntiquesRoadshowUK",
+  "PlutoBaywatch",
+  "PlutoForensicFiles",
+  "PlutoLeverage",
+  "PlutoStoriesbyAMC",
+  "PlutoThisOldHouse",
+  "PlutoTVCSIMiami",
+  "PlutoTVCSINY",
+  "Portlandia",
+  "PowerRangers",
+  "ProjectRunway",
+  "PureFlixTV",
+  "RealCrime",
+  "RealCrime",
+  "RealCrimeUncoveredbyVideoElephant",
+  "RealDisasterChannel",
+  "RealHousewivesVault",
+  "ReelzFamousandInfamous",
+  "Reuters60",
+  "Revry",
+  "Revry2",
+  "RevryGlobal",
+  "RovrPets",
+  "SavedbytheBell",
+  "ScaresbyShudder",
+  "ScreamboxTV",
+  "ScreenPix",
+  "ScreenPixAction",
+  "ScreenPixVoices",
+  "ScreenPixWesternsHD",
+  "ScrippsNews",
+  "Shout!Movies",
+  "SilentWitness&NewTricks",
+  "SlightlyOffIFC",
+  "SNLVault",
+  "StarTrek",
+  "StarTrek",
+  "STARGATE",
+  "StingrayNaturescape",
+  "StingrayNaturescape",
+  "StingrayNaturescapeStream",
+  "StoriesbyAMC",
+  "StoriesbyAMC",
+  "SupermarketSweep",
+  "Supernanny",
+  "Survivor",
+  "Survivor",
+  "SweetEscapes",
+  "SwerveCombat",
+  "Tastemade",
+  "Tastemade",
+  "TastemadeFree",
+  "TastemadeHome",
+  "TastemadeInternational",
+  "TastemadeTravel",
+  "TastemadeEspañolUS",
+  "TastemadeTravel",
+  "TeenWolf",
+  "TeenageMutantNinjaTurtles",
+  "TheAddamsFamily",
+  "TheApprentice",
+  "TheBiggestLoser",
+  "TheBobRossChannel",
+  "TheCarolBurnettShow",
+  "TheChallenge",
+  "TheChallenge",
+  "TheDickVanDykeShow",
+  "TheDickVanDykeShow",
+  "TheDoctors",
+  "TheFBIFiles",
+  "TheFBIFiles",
+  "TheFBIFiles",
+  "TheFirst48byA&E",
+  "TheGirlsNextDoor",
+  "TheLifeandLegendofWyattEarp",
+  "TheMallorcaFiles",
+  "TheMarthaStewartChannel",
+  "TheMarthaStewartChannel",
+  "TheNewDetectives",
+  "TheOuterLimits",
+  "TheOutpost",
+  "ThePractice",
+  "TheRealMcCoys",
+  "TheRiffTraxChannel",
+  "TheRifleman",
+  "TheRifleman",
+  "TheRifleman",
+  "TheThreeStooges+",
+  "TheWalkingDeadUniverse",
+  "TheYoungRiders",
+  "ThisOldHouse",
+  "ThisOldHouse",
+  "ThisOldHouse",
+  "ThisOldHouseMakersChannel",
+  "TopChefVault",
+  "TopGear",
+  "TopGear",
+  "TOTALLYTURTLES",
+  "TrailerParkBoys:TheSwearNetShow",
+  "TribunalJustice",
+  "TrueCrimeNow",
+  "TrueCrimeNow",
+  "TrueHistory",
+  "TVClassics",
+  "UniqueLives",
+  "UniversalMonsters",
+  "UniversalMovies",
+  "UnsolvedMysteries",
+  "UnsolvedMysteries",
+  "UnsolvedMysteries",
+  "UnsolvedMysteries",
+  "UnsolvedMysteries",
+  "Vice",
+  "ViceNews",
+  "ViceStream",
+  "Wanted:DeadorAlive",
+  "WaypointTV",
+  "WeatherNationNashville",
+  "WelcomeHome[Sling]",
+  "WickedTuna",
+  "Wipeout",
+  "WipeoutXtra"
 ];
 
-// EPG URL
-const EPG_URL = 'https://epg.jesmann.com/iptv/USFast.xml.gz';
+  // Add the rest of your 3-day whitelist
+];
 
-// Output file
-const OUTPUT_FILE = 'epg_3day_filtered.xml';
+async function fetch3DayEPG() {
+  try {
+    console.log('Fetching 3-day EPG...');
 
-// Create sax stream
-const saxStream = sax.createStream(true, { trim: true });
-const outputStream = fs.createWriteStream(OUTPUT_FILE);
-let insideChannel = false;
-let insideProgram = false;
+    const url = 'https://epg.jesmann.com/iptv/USFast.xml.gz';
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
 
-saxStream.on('opentag', node => {
-  if (node.name === 'channel' && channels3Day.includes(node.attributes.id)) {
-    insideChannel = true;
-    outputStream.write(`<channel id="${node.attributes.id}">`);
-  } else if (node.name === 'programme' && channels3Day.includes(node.attributes.channel)) {
-    insideProgram = true;
-    let attrs = Object.entries(node.attributes)
-      .map(([k, v]) => `${k}="${v}"`)
-      .join(' ');
-    outputStream.write(`<programme ${attrs}>`);
+    const xmlBuffer = zlib.gunzipSync(response.data);
+    const xmlString = xmlBuffer.toString('utf-8');
+
+    const parsed = await xml2js.parseStringPromise(xmlString);
+
+    const filteredChannels = parsed.tv.channel.filter(ch => {
+      return channels3Day.some(name => {
+        const display1 = ch['display-name']?.[0]?.toLowerCase() || '';
+        const display2 = ch['display-name']?.[1]?.toLowerCase() || '';
+        return ch.$.id.toLowerCase().includes(name.toLowerCase()) ||
+               display1.includes(name.toLowerCase()) ||
+               display2.includes(name.toLowerCase());
+      });
+    });
+
+    const filteredPrograms = parsed.tv.programme.filter(pr => {
+      return filteredChannels.some(ch => ch.$.id === pr.$.channel);
+    });
+
+    const builder = new xml2js.Builder();
+    const finalXml = builder.buildObject({
+      tv: {
+        $: parsed.tv.$,
+        channel: filteredChannels,
+        programme: filteredPrograms
+      }
+    });
+
+    await fs.outputFile('epg_3day_filtered.xml', finalXml);
+    console.log('3-day filtered EPG saved as epg_3day_filtered.xml');
+  } catch (err) {
+    console.error('Error fetching 3-day EPG:', err.message);
   }
-});
+}
 
-saxStream.on('text', text => {
-  if (insideChannel || insideProgram) outputStream.write(text);
-});
-
-saxStream.on('closetag', name => {
-  if (name === 'channel' && insideChannel) {
-    outputStream.write(`</channel>`);
-    insideChannel = false;
-  } else if (name === 'programme' && insideProgram) {
-    outputStream.write(`</programme>`);
-    insideProgram = false;
-  }
-});
-
-saxStream.on('error', err => {
-  console.error('SAX parse error:', err);
-  process.exit(1);
-});
-
-saxStream.on('end', () => {
-  console.log('3-day filtered EPG saved as', OUTPUT_FILE);
-});
-
-// Stream the gzipped file from URL
-https.get(EPG_URL, res => {
-  const gunzip = zlib.createGunzip();
-  pipeline(res, gunzip, saxStream, err => {
-    if (err) {
-      console.error('Pipeline failed:', err);
-      process.exit(1);
-    }
-  });
-});
+fetch3DayEPG();
