@@ -3,7 +3,7 @@ const axios = require('axios');
 const zlib = require('zlib');
 const xml2js = require('xml2js');
 
-// ✅ Your channel list stays here
+// Whitelisted channels
 const channels = [
   "Comet(COMET).us",
   "Laff(LAFF).us",
@@ -157,43 +157,30 @@ const channels = [
   "MGM+Hits(MGMHIT).us",
   "SonyMovieChannel(SONY).us",
   "TheMovieChannel(TMC).us"
+
+  // add the rest of your whitelisted channels here
 ];
 
 async function fetchEPG() {
   try {
-    console.log('Fetching 7-day EPG…');
+    console.log('Fetching 7-day EPG...');
 
     const url = 'https://epg.jesmann.com/iptv/UnitedStates-7day.xml.gz';
     const response = await axios.get(url, { responseType: 'arraybuffer' });
-
-    // Decompress the .gz
     const xmlBuffer = zlib.gunzipSync(response.data);
     const xmlString = xmlBuffer.toString('utf-8');
 
-    // Parse XML
     const parsed = await xml2js.parseStringPromise(xmlString);
 
-    // Filter channels + programmes to your list
-    const tv = parsed.tv;
-    const filteredChannels = tv.channel.filter(ch => channels.includes(ch.$.id));
-    const filteredPrograms  = tv.programme.filter(pr => channels.includes(pr.$.channel));
+    // Filter channels
+    parsed.tv.channel = parsed.tv.channel.filter(ch => channels.includes(ch.$.id));
+    parsed.tv.programme = parsed.tv.programme.filter(pr => channels.includes(pr.$.channel));
 
-    // Build new XML object
-    const filteredObj = {
-      tv: {
-        $: tv.$,                    // keep metadata (source-info-name, generator-info-name, etc.)
-        channel: filteredChannels,  // only your channels
-        programme: filteredPrograms // only matching programmes
-      }
-    };
+    const builder = new xml2js.Builder();
+    const finalXml = builder.buildObject(parsed);
 
-    // Rebuild XML
-    const builder = new xml2js.Builder({ headless: true, renderOpts: { pretty: true } });
-    const finalXml = builder.buildObject(filteredObj);
-
-    // Save
-    await fs.outputFile('epg_7day.xml', finalXml, 'utf-8');
-    console.log('✅ 7-day EPG saved as epg_7day.xml (filtered to your channels)');
+    fs.writeFileSync('epg_7day.xml', finalXml, 'utf-8');
+    console.log('7-day EPG saved as epg_7day.xml');
   } catch (err) {
     console.error('Error fetching 7-day EPG:', err.message);
     process.exit(1);
@@ -201,4 +188,3 @@ async function fetchEPG() {
 }
 
 fetchEPG();
-
