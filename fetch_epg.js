@@ -233,4 +233,4 @@ async function fetch7DayEPG() {
       xmlOutput += '</tv>';
 
       fs.writeFileSync('epg_7day_filtered.xml', xmlOutput);
-      console.log('7-day filtered EPG saved as e
+      console.log('7-day filtered EPG saved as epg_7day_filtered.xml');
